@@ -110,9 +110,7 @@ int main(int argc, const char *argv[]) {
 
     // get device available memory
     cudaMemGetInfo(&free_mem, &total_mem); 
-    printf("Total memory: %ld\n", total_mem);
     free_mem = free_mem * 0.9; // use only 90% of the available memory
-    printf("Using memory: %ld\n", free_mem);
 
     // number of streams needed to scan the text
 	// need to cast the division to avoid integer division overflow
@@ -127,9 +125,6 @@ int main(int argc, const char *argv[]) {
 
 	streams_num = min(streams_needed, max_streams_num);
 	streams_num = min(streams_num, STREAM_MAX_NUM);
-
-	printf("Streams to be run: %d\n", streams_num);
-	printf("Streams needed: %d\n", streams_needed);
 
 	// Calculate the results length for each stream
 	// The length should be a multiple of BLOCKN * THREADN
@@ -201,7 +196,7 @@ int main(int argc, const char *argv[]) {
 	CHECK(cudaDeviceSynchronize());
 	end_gpu = get_time();
 
-	printf("Total time GPU: %.5lf\n", end_gpu - start_gpu);
+	printf("Total time GPU single pattern: %.5lf\n", end_gpu - start_gpu);
 
 
 	//############ write results to a file ############
