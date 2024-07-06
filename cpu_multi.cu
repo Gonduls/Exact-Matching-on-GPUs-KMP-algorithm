@@ -3,26 +3,43 @@
 #include <random>
 #include <time.h>
 #include <sys/time.h>
+#include <pthread.h>
 
 #define SEED 500
 #define PAT_LEN 50
+#define THREADS 64
+
 
 using namespace std;
+
+typedef struct {
+	char* pat;
+	char* txt;
+	bool* result;
+	int* lps;
+	int pat_len;
+	int txt_len;
+	int tid;
+	int n_threads;
+} threads_input;
 
 
 double get_time();
 long input(string filename, char** textp);
 char* random_string(int length, char* text, int seed, long text_len);
 void computeLPSArray(char* pat, int M, int* lps);
-void KMPSearch(char* pat, char* txt, bool* result, int* lps, int pat_len, int txt_len);
+void* KMPSearch_t(void *args);
 
 int main(int argc, const char *argv[]) {
 	const char* filename;
 	char *txt, *pat;
 	long text_len;
-	bool *result;
+	bool *result_threads;
 	int lps[PAT_LEN];
-	double start_cpu, end_cpu;
+	double start_threads, end_threads;
+
+	pthread_t threads[THREADS];
+	threads_input input_th[THREADS];
 
 	// get input
 	if (argc != 2){
@@ -33,25 +50,47 @@ int main(int argc, const char *argv[]) {
     // read text from file and store it in txt, allocate memory for result
     filename = argv[1];
     text_len = input(filename, &txt);
-    result = (bool*) calloc(text_len * sizeof(bool), sizeof(bool));
+    result_threads = (bool*) calloc(text_len * sizeof(bool), sizeof(bool));
 
     // get pattern
     pat = random_string(PAT_LEN, txt, SEED, text_len);
 
-
     // compute lps
     computeLPSArray(pat, PAT_LEN, lps);
+	
+
+	// initialize input
+	for (int i = 0; i<THREADS; i++){
+		input_th[i].pat = pat;
+		input_th[i].txt = txt;
+		input_th[i].result = result_threads;
+		input_th[i].lps = lps;
+		input_th[i].pat_len = PAT_LEN;
+		input_th[i].txt_len = text_len;
+		input_th[i].tid = i;
+		input_th[i].n_threads = THREADS;
+	}
+
 
     // start computation
-	start_cpu = get_time();
-	KMPSearch(pat, txt, result, lps, PAT_LEN, text_len);
-	end_cpu = get_time();
-	printf("Total time CPU single thread: %.5lf\n", end_cpu - start_cpu);
+	start_threads = get_time();
+
+	// start threads
+	for (int i = 0; i<THREADS; i++)
+		pthread_create(&threads[i], NULL, KMPSearch_t, (void*) &input_th[i]);
+	
+
+	for (int i = 0; i<THREADS; i++)
+		pthread_join(threads[i], NULL);
+
+	end_threads = get_time();
+
+	printf("Total time CPU %d threads: %.5lf\n", THREADS, end_threads - start_threads);
 
 	// free memory
 	cudaFreeHost(txt);
 	free(pat);
-	free(result);
+	free(result_threads);
 
 	return 0;
 }
@@ -127,12 +166,33 @@ void computeLPSArray(char* pat, int M, int* lps){
 	}
 }
 
-// code adapted from https://www.geeksforgeeks.org/kmp-algorithm-for-pattern-searching/
-void KMPSearch(char* pat, char* txt, bool* result, int* lps, int pat_len, int txt_len){
-	int i = 0; // index for txt[]
+void* KMPSearch_t(void *args){
+
+	threads_input* input_th = (threads_input*) args;
+	char* pat = input_th->pat;
+	char* txt = input_th->txt;
+	bool* result = input_th->result;
+	int* lps = input_th->lps;
+	int pat_len = input_th->pat_len;
+	int txt_len = input_th->txt_len;
+	int tid = input_th->tid;
+	int n_threads = input_th->n_threads;
+
+	int i; // index for txt[]
 	int j = 0; // index for pat[]
 
-	while ((txt_len - i) >= (pat_len - j)) {
+	int start, end;
+
+	start = tid * (txt_len / n_threads + 1);
+	end = (tid + 1) * (txt_len / n_threads + 1) + pat_len - 1;
+
+	if(end > txt_len)
+		end = txt_len;
+
+	i = start;
+
+	while (i < end) {
+		
 		if (pat[j] == txt[i]) {
 			j++;
 			i++;
@@ -153,4 +213,6 @@ void KMPSearch(char* pat, char* txt, bool* result, int* lps, int pat_len, int tx
 				i = i + 1;
 		}
 	}
+
+	return NULL;
 }
