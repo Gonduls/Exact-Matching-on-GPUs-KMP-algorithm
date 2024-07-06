@@ -87,6 +87,14 @@ int main(int argc, const char *argv[]) {
 
 	printf("Total time CPU %d threads: %.5lf\n", THREADS, end_threads - start_threads);
 
+	// write results to file
+	/* ofstream myfile;
+	myfile.open ("result.txt");
+	for (int i = 0; i<text_len; i++){
+		myfile << result[i] + 0;
+	}
+	myfile.close(); */
+
 	// free memory
 	cudaFreeHost(txt);
 	free(pat);

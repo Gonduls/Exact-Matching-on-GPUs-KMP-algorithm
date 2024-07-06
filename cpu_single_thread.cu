@@ -48,6 +48,14 @@ int main(int argc, const char *argv[]) {
 	end_cpu = get_time();
 	printf("Total time CPU single thread: %.5lf\n", end_cpu - start_cpu);
 
+	// write results to file
+	/* ofstream myfile;
+	myfile.open ("result.txt");
+	for (int i = 0; i<text_len; i++){
+		myfile << result[i] + 0;
+	}
+	myfile.close(); */
+
 	// free memory
 	cudaFreeHost(txt);
 	free(pat);
